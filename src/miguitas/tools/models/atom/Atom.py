@@ -1,6 +1,7 @@
 class Atom:
-    def __init__(self, name: str, atomic_number: int):
+    def __init__(self, name: str, symbol: str, atomic_number: int):
         self.name = name
+        self.symbol = symbol
         self.atomic_number = atomic_number
         self.num_of_electrons = atomic_number # Asumiendo átomo neutro
         self.configuration = self._build_configuration()
@@ -32,7 +33,8 @@ class Atom:
         return " ".join(result)
 
     def __str__(self):
-        return f"Elemento: {self.name} | Z: {self.atomic_number}\nConfiguración: {self.configuration}"
+        return f"Elemento: {self.name} ({self.symbol}) | Z: {self.atomic_number}\nConfiguración: {self.configuration}"
 
-element = Atom("Helio", 2)
-print(element)
+if __name__ == "__main__":
+    element = Atom("Helio", "He", 2)
+    print(element)

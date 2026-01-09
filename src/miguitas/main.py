@@ -1,7 +1,11 @@
 from fastmcp import FastMCP
+from miguitas.tools.chemistry import create_atom
 
 # Creamos la instancia del servidor
 mcp = FastMCP("SuperScientificServer")
+
+# Registramos herramientas externas
+mcp.tool()(create_atom)
 
 # --- HERRAMIENTAS (Tools) ---
 # Las herramientas son funciones que la IA puede ejecutar.
