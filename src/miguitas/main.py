@@ -21,5 +21,8 @@ def calculate_kinetic_energy(mass_kg: float, velocity_ms: float) -> str:
 def get_flash_stats() -> str:
     return "Nombre: Barry Allen | Velocidad Máxima: Mach 10 | Resistencia: Alta"
 
-if __name__ == "__main__":
+def main():
     mcp.run()
+
+if __name__ == "__main__":
+    main()
