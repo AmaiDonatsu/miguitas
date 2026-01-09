@@ -1,0 +1,15 @@
+.venv/
+env/
+venv/
+
+.env
+.env.*
+!.env.example
+__pycache__/
+*.py[cod]
+*$py.class
+
+dist/
+build/
+*.egg-info/
+.uv/
