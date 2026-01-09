@@ -1,47 +1,38 @@
 class Atom:
-    def __init__(self, name: str, atomic_number: int, num_of_electrons: int = None, electron_configuration: str = None):
+    def __init__(self, name: str, atomic_number: int):
         self.name = name
         self.atomic_number = atomic_number
-        self.num_of_electrons = num_of_electrons
-        self.electron_configuration = electron_configuration
+        self.num_of_electrons = atomic_number # Asumiendo átomo neutro
+        self.configuration = self._build_configuration()
 
-    def _electron_configuration(self):
-        if (self.num_of_electrons is None):
-            self.num_of_electrons = self._calculate_number_of_electrons()
-            num_of_electrons = self.num_of_electrons
+    def _build_configuration(self):
+        sublevels = []
+        for n in range(1, 8):
+            for l_val, symbol in enumerate(['s', 'p', 'd', 'f']):
+                if l_val < n: # Regla cuántica: l < n
+                    sublevels.append({
+                        "name": f"{n}{symbol}",
+                        "n": n,
+                        "l": l_val,
+                        "energy": n + l_val, 
+                        "capacity": 2 * (2 * l_val + 1) 
+                    })
 
-            n=1
-            while num_of_electrons > 0:
-                ls = [for in ORBITALS.get(lambda x: x["l"] == n-1)]
-                
+        sublevels.sort(key=lambda x: (x["energy"], x["n"]))
+
+        remaining = self.num_of_electrons
+        result = []
+        for sub in sublevels:
+            if remaining <= 0: break
             
-        return self.electron_configuration
+            take = min(remaining, sub["capacity"])
+            result.append(f"{sub['name']}^{take}")
+            remaining -= take
+            
+        return " ".join(result)
 
-    def _calculate_number_of_electrons(self):
-        number_of_electrons = self.atomic_number
-        return number_of_electrons
     def __str__(self):
-        return f"{self.name} ({self.atomic_number})"
+        return f"Elemento: {self.name} | Z: {self.atomic_number}\nConfiguración: {self.configuration}"
 
-
-def calculate_energy(n):
-    return n + 1
-
-ORBITALS = {
-    "s": {
-        "l": 0,
-        "electrons": 2
-    },
-    "p": {
-        "l": 1,
-        "electrons": 6
-    },
-    "d": {
-        "l": 2,
-        "electrons": 10
-    },
-    "f": {
-        "l": 3,
-        "electrons": 14
-    }
-}
+element = Atom("Helio", 2)
+print(element)
