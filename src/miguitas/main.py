@@ -1,14 +1,9 @@
 from fastmcp import FastMCP
 from miguitas.tools.chemistry import create_atom
 
-# Creamos la instancia del servidor
 mcp = FastMCP("SuperScientificServer")
 
-# Registramos herramientas externas
 mcp.tool()(create_atom)
-
-# --- HERRAMIENTAS (Tools) ---
-# Las herramientas son funciones que la IA puede ejecutar.
 
 @mcp.tool()
 def calculate_kinetic_energy(mass_kg: float, velocity_ms: float) -> str:
@@ -18,8 +13,6 @@ def calculate_kinetic_energy(mass_kg: float, velocity_ms: float) -> str:
     energy = 0.5 * mass_kg * (velocity_ms ** 2)
     return f"La energía cinética resultante es de {energy} Joules. $$E_k = \\frac{1}{2}mv^2$$"
 
-# --- RECURSOS (Resources) ---
-# Los recursos son como "archivos" o datos estáticos que la IA puede leer.
 
 @mcp.resource("hero://stats/flash")
 def get_flash_stats() -> str:
