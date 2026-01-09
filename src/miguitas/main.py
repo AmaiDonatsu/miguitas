@@ -1,7 +1,7 @@
 from fastmcp import FastMCP
 from miguitas.tools.chemistry import create_atom
 
-mcp = FastMCP("SuperScientificServer")
+mcp = FastMCP("miguitasServer")
 
 mcp.tool()(create_atom)
 
