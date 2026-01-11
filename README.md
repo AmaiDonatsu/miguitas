@@ -10,7 +10,7 @@ Este proyecto utiliza [uv](https://docs.astral.sh/uv/) para la gestión de depen
 
 1. **Clona el repositorio:**
    ```bash
-   git clone https://github.com/tu-usuario/miguitas.git
+   git clone https://github.com/AmaiDonatsu/miguitas.git
    cd miguitas
    ```
 
