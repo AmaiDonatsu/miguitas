@@ -4,6 +4,9 @@ Molecule.py - Representación de moléculas como árbol de nodos atómicos.
 Este módulo define la clase Molecule que conecta átomos mediante enlaces,
 formando una estructura de árbol/grafo.
 
+Los átomos deben existir en el GlobalStore antes de ser añadidos a la molécula.
+Cuando un átomo se añade, su estado cambia de FREE a BOUND.
+
 Extensibilidad:
 - Añadir calculate_energy() para cálculos energéticos.
 - Añadir get_geometry() para determinar geometría molecular (VSEPR).
@@ -23,31 +26,21 @@ class Molecule:
     """
     Representa una molécula como un árbol de nodos atómicos conectados por enlaces.
     
-    La molécula se construye añadiendo átomos y conectándolos mediante enlaces.
-    Cada átomo se envuelve en un MoleculeNode que rastrea su estado de enlace.
+    La molécula se construye añadiendo átomos (que deben existir en el GlobalStore)
+    y conectándolos mediante enlaces. Cada átomo se envuelve en un MoleculeNode
+    que rastrea su estado de enlace dentro de la molécula.
     
     Attributes:
         name: Nombre de la molécula (ej: "Metano").
         formula: Fórmula molecular (ej: "CH4").
         nodes: Diccionario de átomos a sus nodos correspondientes.
         bonds: Lista de todos los enlaces en la molécula.
+        atom_ids: Lista de IDs de átomos en esta molécula.
     
     Extensibility Hooks:
         - total_energy: Energía total de la molécula.
         - geometry: Geometría molecular según VSEPR.
         - is_stable: Indica si la molécula es termodinámicamente estable.
-    
-    Example:
-        >>> carbon = Atom("Carbono", "C", 6)
-        >>> hydrogen = Atom("Hidrógeno", "H", 1)
-        >>> methane = Molecule("Metano")
-        >>> methane.add_atom(carbon)
-        >>> for _ in range(4):
-        ...     h = Atom("Hidrógeno", "H", 1)
-        ...     methane.add_atom(h)
-        ...     methane.connect(carbon, h)
-        >>> print(methane.is_valid())
-        True
     """
     
     def __init__(self, name: str, formula: Optional[str] = None):
@@ -62,6 +55,7 @@ class Molecule:
         self._formula = formula
         self.nodes: Dict[Atom, MoleculeNode] = {}
         self.bonds: List[Bond] = []
+        self.atom_ids: List[str] = []  # Track atom IDs for reference
         
         # === Hooks para extensibilidad futura ===
         # self.total_energy: Optional[float] = None
@@ -76,21 +70,52 @@ class Molecule:
         """
         Añade un átomo a la molécula.
         
+        El átomo debe estar en estado FREE. Al añadirse, su estado cambiará
+        a BOUND (esto lo maneja el GlobalStore).
+        
         Args:
-            atom: El átomo a añadir.
+            atom: El átomo a añadir (debe existir en el GlobalStore).
         
         Returns:
             El MoleculeNode creado para este átomo.
         
         Raises:
-            ValueError: Si el átomo ya existe en la molécula.
+            ValueError: Si el átomo ya existe en esta molécula o está enlazado a otra.
         """
+        # Verificar si ya está en esta molécula
         if atom in self.nodes:
-            raise ValueError(f"El átomo {atom.symbol} ya existe en la molécula.")
+            raise ValueError(
+                f"El átomo {atom.id} ({atom.symbol}) ya existe en la molécula '{self.name}'."
+            )
         
+        # Verificar si está libre (el GlobalStore valida esto antes, pero doble check)
+        if atom.is_bound and atom.bound_to != self.name:
+            raise ValueError(
+                f"El átomo {atom.id} ({atom.symbol}) ya está enlazado a '{atom.bound_to}'. "
+                f"Viola el principio de conservación de materia."
+            )
+        
+        # Crear nodo y registrar
         node = MoleculeNode(atom)
         self.nodes[atom] = node
+        self.atom_ids.append(atom.id)
+        
         return node
+    
+    def get_atom_by_id(self, atom_id: str) -> Optional[Atom]:
+        """
+        Busca un átomo en la molécula por su ID.
+        
+        Args:
+            atom_id: ID del átomo a buscar.
+        
+        Returns:
+            El átomo si existe en la molécula, None si no.
+        """
+        for atom in self.nodes.keys():
+            if atom.id == atom_id:
+                return atom
+        return None
     
     def connect(
         self, 
@@ -114,9 +139,9 @@ class Molecule:
         """
         # Validar que ambos átomos están en la molécula
         if atom1 not in self.nodes:
-            raise ValueError(f"El átomo {atom1.symbol} no está en la molécula.")
+            raise ValueError(f"El átomo {atom1.id} ({atom1.symbol}) no está en la molécula.")
         if atom2 not in self.nodes:
-            raise ValueError(f"El átomo {atom2.symbol} no está en la molécula.")
+            raise ValueError(f"El átomo {atom2.id} ({atom2.symbol}) no está en la molécula.")
         
         node1 = self.nodes[atom1]
         node2 = self.nodes[atom2]
@@ -133,6 +158,36 @@ class Molecule:
         
         return bond
     
+    def connect_by_id(
+        self, 
+        atom_id_1: str, 
+        atom_id_2: str, 
+        bond_type: BondType = BondType.SINGLE
+    ) -> Bond:
+        """
+        Conecta dos átomos por sus IDs.
+        
+        Args:
+            atom_id_1: ID del primer átomo.
+            atom_id_2: ID del segundo átomo.
+            bond_type: Tipo de enlace.
+        
+        Returns:
+            El Bond creado.
+        
+        Raises:
+            ValueError: Si algún átomo no existe en la molécula.
+        """
+        atom1 = self.get_atom_by_id(atom_id_1)
+        atom2 = self.get_atom_by_id(atom_id_2)
+        
+        if atom1 is None:
+            raise ValueError(f"No existe el átomo con ID '{atom_id_1}' en esta molécula.")
+        if atom2 is None:
+            raise ValueError(f"No existe el átomo con ID '{atom_id_2}' en esta molécula.")
+        
+        return self.connect(atom1, atom2, bond_type)
+    
     # =========================================================================
     # VALIDACIÓN Y ESTADO
     # =========================================================================
@@ -146,10 +201,6 @@ class Molecule:
         
         Returns:
             True si todos los nodos están satisfechos.
-        
-        Note:
-            Este método puede extenderse para incluir validaciones
-            energéticas y de reactividad.
         """
         if not self.nodes:
             return False
@@ -252,50 +303,6 @@ class Molecule:
         for atom, node in self.nodes.items():
             status = "✓" if node.is_satisfied() else f"({node.remaining_spaces} espacios)"
             bonds_str = ", ".join(str(b) for b in node.bonds) or "sin enlaces"
-            lines.append(f"  {atom.symbol}: {bonds_str} {status}")
+            lines.append(f"  [{atom.id}] {atom.symbol}: {bonds_str} {status}")
         
         return "\n".join(lines)
-
-
-# =============================================================================
-# EJEMPLO DE USO
-# =============================================================================
-
-if __name__ == "__main__":
-    # Crear átomos
-    carbon = Atom("Carbono", "C", 6)
-    h1 = Atom("Hidrógeno", "H", 1)
-    h2 = Atom("Hidrógeno", "H", 1)
-    h3 = Atom("Hidrógeno", "H", 1)
-    h4 = Atom("Hidrógeno", "H", 1)
-    
-    # Construir metano CH4
-    methane = Molecule("Metano")
-    methane.add_atom(carbon)
-    methane.add_atom(h1)
-    methane.add_atom(h2)
-    methane.add_atom(h3)
-    methane.add_atom(h4)
-    
-    methane.connect(carbon, h1)
-    methane.connect(carbon, h2)
-    methane.connect(carbon, h3)
-    methane.connect(carbon, h4)
-    
-    print(methane)
-    print()
-    
-    # Construir agua H2O
-    oxygen = Atom("Oxígeno", "O", 8)
-    h_a = Atom("Hidrógeno", "H", 1)
-    h_b = Atom("Hidrógeno", "H", 1)
-    
-    water = Molecule("Agua")
-    water.add_atom(oxygen)
-    water.add_atom(h_a)
-    water.add_atom(h_b)
-    
-    water.connect(oxygen, h_a)
-    water.connect(oxygen, h_b)
-    
-    print(water)
